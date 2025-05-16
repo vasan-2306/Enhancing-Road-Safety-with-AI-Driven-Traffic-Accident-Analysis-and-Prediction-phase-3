@@ -1,2 +1,0 @@
-import joblib
-model = joblib.load('RandomForest.pkl')
