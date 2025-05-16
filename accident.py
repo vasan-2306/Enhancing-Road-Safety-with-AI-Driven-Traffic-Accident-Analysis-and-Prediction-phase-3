@@ -243,44 +243,44 @@ with st.form("prediction_form"):
     with cols[col_idx]:
         time_input = st.text_input("Time of accident (HH:MM or HH:MM:SS)", "12:00", key="time_input")
 
-    # Add a submit button at the bottom
-    st.form_submit_button("Predict")
+    # Add a submit button at the bottom and check if form is submitted
+    submitted = st.form_submit_button("Predict")
 
-# Handle form submission
-if st.form_submit_button("Predict"):
-    try:
-        # Handle Time_Category
-        if len(time_input.split(':')) == 2:
-            time_input += ':00'
-        time_hour = pd.to_datetime(time_input, format='%H:%M:%S').hour
-        time_category = pd.cut(
-            [time_hour],
-            bins=[0, 6, 12, 18, 24],
-            labels=['Night', 'Morning', 'Afternoon', 'Evening'],
-            right=False
-        )[0]
-    except:
-        time_category = 'Morning'
-    input_data['Time_Category'] = time_category
+    # Handle form submission
+    if submitted:
+        try:
+            # Handle Time_Category
+            if len(time_input.split(':')) == 2:
+                time_input += ':00'
+            time_hour = pd.to_datetime(time_input, format='%H:%M:%S').hour
+            time_category = pd.cut(
+                [time_hour],
+                bins=[0, 6, 12, 18, 24],
+                labels=['Night', 'Morning', 'Afternoon', 'Evening'],
+                right=False
+            )[0]
+        except:
+            time_category = 'Morning'
+        input_data['Time_Category'] = time_category
 
-    # Convert to DataFrame and prepare features
-    input_df = pd.DataFrame([input_data])
-    input_df = pd.get_dummies(input_df)
-    missing_cols = set(X.columns) - set(input_df.columns)
-    for col in missing_cols:
-        input_df[col] = 0
-    input_df = input_df[X.columns]
+        # Convert to DataFrame and prepare features
+        input_df = pd.DataFrame([input_data])
+        input_df = pd.get_dummies(input_df)
+        missing_cols = set(X.columns) - set(input_df.columns)
+        for col in missing_cols:
+            input_df[col] = 0
+        input_df = input_df[X.columns]
 
-    # Predictions
-    rf_pred = rf_model.predict(input_df)
-    rf_severity = le.inverse_transform(rf_pred)[0]
+        # Predictions
+        rf_pred = rf_model.predict(input_df)
+        rf_severity = le.inverse_transform(rf_pred)[0]
 
-    input_df_nn = scaler.transform(input_df)
-    nn_pred = nn_model.predict(input_df_nn, verbose=0)
-    nn_severity = le.inverse_transform([np.argmax(nn_pred, axis=1)])[0]
+        input_df_nn = scaler.transform(input_df)
+        nn_pred = nn_model.predict(input_df_nn, verbose=0)
+        nn_severity = le.inverse_transform([np.argmax(nn_pred, axis=1)])[0]
 
-    st.success(f"**Random Forest Prediction**: {rf_severity}")
-    st.success(f"**Neural Network Prediction**: {nn_severity}")
+        st.success(f"**Random Forest Prediction**: {rf_severity}")
+        st.success(f"**Neural Network Prediction**: {nn_severity}")
 
 # Road Safety Insights
 st.header("Road Safety Insights")
