@@ -117,7 +117,7 @@ The script generates the following plots, displayed one by one with a 2-second p
    - “No distancing” and “Changing lane” are leading causes.
 5. **Neural Network Training History**:
    - Plots training/validation accuracy and loss curves.
-   - 
+     
 ![Image](https://github.com/user-attachments/assets/57c1dcf0-b2e8-4033-bd59-42735f771257)
 
 ![Image](https://github.com/user-attachments/assets/61844059-e54a-4c8f-8a20-955de3fd6782) |
