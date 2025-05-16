@@ -208,23 +208,46 @@ if st.checkbox("Show Neural Network Training History"):
 st.header("Predict Accident Severity")
 st.markdown("Enter the details below to predict accident severity.")
 
-input_data = {}
+# Get the columns for input (excluding 'Accident_severity' and 'Time')
 original_cols = df.drop(['Accident_severity', 'Time'], axis=1).columns
 
+# Create a form for input
 with st.form("prediction_form"):
+    # Divide the layout into 4 columns for a landscape orientation
+    col1, col2, col3, col4 = st.columns(4)
+    input_data = {}
+    cols = [col1, col2, col3, col4]  # List of columns to distribute inputs
+    col_idx = 0  # To cycle through columns
+
+    # Distribute input fields across columns
     for col in original_cols:
         if col == 'Time_Category':
             continue
-        if df[col].dtype in ['int64', 'float64']:
-            input_data[col] = st.number_input(f"{col} ({df[col].dtype})", value=float(df[col].mean()))
-        else:
-            unique_values = df[col].unique()
-            input_data[col] = st.selectbox(f"{col} ({df[col].dtype})", unique_values)
+        with cols[col_idx]:
+            if df[col].dtype in ['int64', 'float64']:
+                input_data[col] = st.number_input(
+                    f"{col} ({df[col].dtype})",
+                    value=float(df[col].mean()),
+                    key=col
+                )
+            else:
+                unique_values = df[col].unique()
+                input_data[col] = st.selectbox(
+                    f"{col} ({df[col].dtype})",
+                    unique_values,
+                    key=col
+                )
+        col_idx = (col_idx + 1) % 4  # Cycle through the 4 columns
 
-    time_input = st.text_input("Time of accident (HH:MM or HH:MM:SS)", "12:00")
-    submitted = st.form_submit_button("Predict")
+    # Add the time input in the last column
+    with cols[col_idx]:
+        time_input = st.text_input("Time of accident (HH:MM or HH:MM:SS)", "12:00", key="time_input")
 
-if submitted:
+    # Add a submit button at the bottom
+    st.form_submit_button("Predict")
+
+# Handle form submission
+if st.form_submit_button("Predict"):
     try:
         # Handle Time_Category
         if len(time_input.split(':')) == 2:
