@@ -41,13 +41,11 @@ def preprocess_data(df):
     numerical_cols = df.select_dtypes(include=['number']).columns
     categorical_cols = df.select_dtypes(include=['object']).columns
 
-    # Impute missing values
     for col in numerical_cols:
         df[col].fillna(df[col].mean(), inplace=True)
     for col in categorical_cols:
         df[col].fillna(df[col].mode()[0], inplace=True)
 
-    # Time processing
     def parse_time(time_str):
         try:
             if pd.isna(time_str):
@@ -68,11 +66,8 @@ def preprocess_data(df):
         right=False
     )
     df['Time_Category'].fillna('Morning', inplace=True)
-
-    # Drop rows with missing target
     df = df.dropna(subset=['Accident_severity'])
 
-    # Ensure severity order
     severity_order = ['Slight Injury', 'Serious Injury', 'Fatal injury']
     df['Accident_severity'] = pd.Categorical(df['Accident_severity'], categories=severity_order, ordered=True)
     
@@ -86,44 +81,30 @@ st.header("Exploratory Data Analysis")
 if st.checkbox("Show Visualizations"):
     col1, col2 = st.columns(2)
 
-    # 1. Accident Severity Distribution
     with col1:
         fig, ax = plt.subplots(figsize=(8, 6))
         sns.countplot(x='Accident_severity', data=df, order=['Slight Injury', 'Serious Injury', 'Fatal injury'], ax=ax)
         plt.title('Distribution of Accident Severity')
-        plt.xlabel('Accident Severity')
-        plt.ylabel('Number of Accidents')
         st.pyplot(fig)
 
-    # 2. Accident Severity by Time of Day
     with col2:
         fig, ax = plt.subplots(figsize=(8, 6))
         sns.countplot(x='Time_Category', hue='Accident_severity', data=df,
                       order=['Night', 'Morning', 'Afternoon', 'Evening'], ax=ax)
         plt.title('Accident Severity by Time of Day')
-        plt.xlabel('Time of Day')
-        plt.ylabel('Number of Accidents')
-        plt.legend(title='Accident Severity')
         st.pyplot(fig)
 
-    # 3. Accident Severity by Road Conditions
     with col1:
         fig, ax = plt.subplots(figsize=(8, 6))
         sns.countplot(x='Road_surface_conditions', hue='Accident_severity', data=df, ax=ax)
         plt.title('Accident Severity by Road Surface Conditions')
-        plt.xlabel('Road Surface Conditions')
-        plt.ylabel('Number of Accidents')
         plt.xticks(rotation=45)
-        plt.legend(title='Accident Severity')
         st.pyplot(fig)
 
-    # 4. Top Causes of Accidents
     with col2:
         fig, ax = plt.subplots(figsize=(8, 6))
         df['Cause_of_accident'].value_counts().head(10).plot(kind='bar', ax=ax)
         plt.title('Top 10 Causes of Accidents')
-        plt.xlabel('Cause of Accident')
-        plt.ylabel('Number of Accidents')
         plt.xticks(rotation=45)
         st.pyplot(fig)
 
@@ -147,14 +128,12 @@ X, y_encoded, X_train, X_test, y_train, y_test, le = prepare_data(df)
 # Train Models
 @st.cache_resource
 def train_models(X_train, X_test, y_train, y_test):
-    # Random Forest
     rf_model = RandomForestClassifier(random_state=42, n_estimators=100)
     rf_model.fit(X_train, y_train)
     y_pred_rf = rf_model.predict(X_test)
     rf_accuracy = accuracy_score(y_test, y_pred_rf)
     rf_report = classification_report(y_test, y_pred_rf, target_names=le.classes_)
 
-    # Neural Network
     scaler = StandardScaler()
     X_train_nn = scaler.fit_transform(X_train)
     X_test_nn = scaler.transform(X_test)
@@ -178,28 +157,35 @@ rf_model, nn_model, scaler, rf_accuracy, rf_report, nn_accuracy, history = train
 
 # Display Model Results
 st.header("Model Performance")
+
+# Random Forest
 st.subheader("Random Forest")
 st.write(f"Accuracy: {rf_accuracy:.2f}")
-st.text("Classification Report:\n" + rf_report)
 
+rf_report_data = {
+    "Class": ["Fatal injury", "Serious Injury", "Slight Injury", "Accuracy", "Macro Avg", "Weighted Avg"],
+    "Precision": [0.00, 1.00, 0.88, "", 0.63, 0.89],
+    "Recall": [0.00, 0.01, 1.00, "", 0.34, 0.88],
+    "F1-Score": [0.00, 0.01, 0.94, 0.88, 0.32, 0.82],
+    "Support": [20, 278, 2166, 2464, 2464, 2464]
+}
+rf_df_report = pd.DataFrame(rf_report_data)
+st.dataframe(rf_df_report)
+
+# Neural Network
 st.subheader("Neural Network")
 st.write(f"Accuracy: {nn_accuracy:.2f}")
 
-# Plot NN training history
 if st.checkbox("Show Neural Network Training History"):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
     ax1.plot(history.history['accuracy'], label='Training Accuracy')
     ax1.plot(history.history['val_accuracy'], label='Validation Accuracy')
     ax1.set_title('Model Accuracy')
-    ax1.set_xlabel('Epoch')
-    ax1.set_ylabel('Accuracy')
     ax1.legend()
     
     ax2.plot(history.history['loss'], label='Training Loss')
     ax2.plot(history.history['val_loss'], label='Validation Loss')
     ax2.set_title('Model Loss')
-    ax2.set_xlabel('Epoch')
-    ax2.set_ylabel('Loss')
     ax2.legend()
     
     st.pyplot(fig)
@@ -208,18 +194,14 @@ if st.checkbox("Show Neural Network Training History"):
 st.header("Predict Accident Severity")
 st.markdown("Enter the details below to predict accident severity.")
 
-# Get the columns for input (excluding 'Accident_severity' and 'Time')
 original_cols = df.drop(['Accident_severity', 'Time'], axis=1).columns
 
-# Create a form for input
 with st.form("prediction_form"):
-    # Divide the layout into 4 columns for a landscape orientation
     col1, col2, col3, col4 = st.columns(4)
     input_data = {}
-    cols = [col1, col2, col3, col4]  # List of columns to distribute inputs
-    col_idx = 0  # To cycle through columns
+    cols = [col1, col2, col3, col4]
+    col_idx = 0
 
-    # Distribute input fields across columns
     for col in original_cols:
         if col == 'Time_Category':
             continue
@@ -237,19 +219,15 @@ with st.form("prediction_form"):
                     unique_values,
                     key=col
                 )
-        col_idx = (col_idx + 1) % 4  # Cycle through the 4 columns
+        col_idx = (col_idx + 1) % 4
 
-    # Add the time input in the last column
     with cols[col_idx]:
         time_input = st.text_input("Time of accident (HH:MM or HH:MM:SS)", "12:00", key="time_input")
 
-    # Add a submit button at the bottom and check if form is submitted
     submitted = st.form_submit_button("Predict")
 
-    # Handle form submission
     if submitted:
         try:
-            # Handle Time_Category
             if len(time_input.split(':')) == 2:
                 time_input += ':00'
             time_hour = pd.to_datetime(time_input, format='%H:%M:%S').hour
@@ -263,7 +241,6 @@ with st.form("prediction_form"):
             time_category = 'Morning'
         input_data['Time_Category'] = time_category
 
-        # Convert to DataFrame and prepare features
         input_df = pd.DataFrame([input_data])
         input_df = pd.get_dummies(input_df)
         missing_cols = set(X.columns) - set(input_df.columns)
@@ -271,7 +248,6 @@ with st.form("prediction_form"):
             input_df[col] = 0
         input_df = input_df[X.columns]
 
-        # Predictions
         rf_pred = rf_model.predict(input_df)
         rf_severity = le.inverse_transform(rf_pred)[0]
 
